@@ -1,5 +1,10 @@
-// iodine-ui component library entry point
-// Export components here as they are created
+// iodine-ui component library
 
-// Example:
-// export { Button } from './components/Button'
+export {
+  ShaderButton,
+  PlasmaButton,
+  FireButton,
+  VortexButton,
+} from './components/Button'
+
+export type { ShaderButtonProps } from './components/Button'
