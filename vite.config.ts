@@ -11,6 +11,9 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
@@ -28,6 +31,11 @@ export default defineConfig({
         }
       }
     }
+  },
+  server: {
+    host: '0.0.0.0', // Bind to all interfaces
+    port: 3000,      // Use unprivileged port
+    strictPort: true // Fail if port is occupied
   },
   test: {
     projects: [{
