@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import { ShaderButton, PlasmaButton, FireButton, VortexButton } from './index'
+import { ShaderButton, PlasmaButton, FireButton, VortexButton, OctogramButton, shaderVariants } from './index'
 
 const meta: Meta<typeof ShaderButton> = {
   title: 'Components/ShaderButton',
@@ -18,7 +18,7 @@ const meta: Meta<typeof ShaderButton> = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['plasma', 'fire', 'vortex'],
+      options: shaderVariants,
       description: 'The shader effect variant',
     },
     intensity: {
@@ -63,6 +63,14 @@ export const Vortex: Story = {
   },
 }
 
+export const Octograms: Story = {
+  args: {
+    variant: 'octograms',
+    children: 'Octograms',
+    intensity: 1.0,
+  },
+}
+
 export const LowIntensity: Story = {
   args: {
     variant: 'plasma',
@@ -85,6 +93,7 @@ export const AllVariants: Story = {
       <PlasmaButton>Plasma</PlasmaButton>
       <FireButton>Fire</FireButton>
       <VortexButton>Vortex</VortexButton>
+      <OctogramButton>Octograms</OctogramButton>
     </div>
   ),
   parameters: {

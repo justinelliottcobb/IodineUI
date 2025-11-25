@@ -1,22 +1,12 @@
 import { useRef, useEffect, type ReactNode, type ButtonHTMLAttributes } from 'react'
 import { Renderer, Program, Mesh, Triangle } from 'ogl'
-import { vertexShader, plasmaFragment, fireFragment, vortexFragment } from '../../shaders'
+import { vertexShader, shaderRegistry, type ShaderVariant } from '../../shaders'
 import styles from './Button.module.css'
 
 export interface ShaderButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
-  variant?: 'plasma' | 'fire' | 'vortex'
+  variant?: ShaderVariant
   intensity?: number
-}
-
-interface ShaderConfig {
-  fragment: string
-}
-
-const shaderConfigs: Record<string, ShaderConfig> = {
-  plasma: { fragment: plasmaFragment },
-  fire: { fragment: fireFragment },
-  vortex: { fragment: vortexFragment },
 }
 
 export function ShaderButton({
@@ -24,6 +14,7 @@ export function ShaderButton({
   variant = 'plasma',
   intensity = 1.0,
   className,
+  style,
   ...props
 }: ShaderButtonProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -32,9 +23,11 @@ export function ShaderButton({
   const animationRef = useRef<number>(0)
   const mouseRef = useRef({ x: 0.5, y: 0.5 })
 
+  const effect = shaderRegistry[variant]
+
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || !effect) return
 
     const renderer = new Renderer({
       canvas,
@@ -50,10 +43,9 @@ export function ShaderButton({
 
     const geometry = new Triangle(gl)
 
-    const config = shaderConfigs[variant]
     const program = new Program(gl, {
       vertex: vertexShader,
-      fragment: config.fragment,
+      fragment: effect.fragment,
       uniforms: {
         uTime: { value: 0 },
         uIntensity: { value: intensity },
@@ -94,7 +86,7 @@ export function ShaderButton({
       resizeObserver.disconnect()
       gl.getExtension('WEBGL_lose_context')?.loseContext()
     }
-  }, [variant, intensity])
+  }, [variant, intensity, effect])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -108,11 +100,20 @@ export function ShaderButton({
     mouseRef.current = { x: 0.5, y: 0.5 }
   }
 
+  // Apply glow from effect config
+  const glowStyle = effect?.glow
+    ? {
+        boxShadow: `0 4px 15px ${effect.glow}, 0 0 30px ${effect.glow.replace('0.4', '0.2')}`,
+        ...style,
+      }
+    : style
+
   return (
     <button
-      className={`${styles.shaderButton} ${styles[variant]} ${className || ''}`}
+      className={`${styles.shaderButton} ${className || ''}`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      style={glowStyle}
       {...props}
     >
       <canvas ref={canvasRef} className={styles.canvas} />

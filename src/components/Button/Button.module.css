@@ -9,7 +9,7 @@
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.3s ease, filter 0.3s ease;
   font-family: inherit;
   font-size: 1rem;
   font-weight: 600;
@@ -17,6 +17,7 @@
 
 .shaderButton:hover {
   transform: translateY(-2px);
+  filter: brightness(1.1);
 }
 
 .shaderButton:active {
@@ -35,6 +36,7 @@
 
 .shaderButton:disabled:hover {
   transform: none;
+  filter: none;
 }
 
 .canvas {
@@ -51,41 +53,4 @@
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   pointer-events: none;
-}
-
-/* Variant-specific styles */
-.plasma {
-  box-shadow:
-    0 4px 15px rgba(147, 51, 234, 0.4),
-    0 0 30px rgba(147, 51, 234, 0.2);
-}
-
-.plasma:hover {
-  box-shadow:
-    0 6px 20px rgba(147, 51, 234, 0.5),
-    0 0 40px rgba(147, 51, 234, 0.3);
-}
-
-.fire {
-  box-shadow:
-    0 4px 15px rgba(239, 68, 68, 0.4),
-    0 0 30px rgba(251, 146, 60, 0.2);
-}
-
-.fire:hover {
-  box-shadow:
-    0 6px 20px rgba(239, 68, 68, 0.5),
-    0 0 40px rgba(251, 146, 60, 0.3);
-}
-
-.vortex {
-  box-shadow:
-    0 4px 15px rgba(6, 182, 212, 0.4),
-    0 0 30px rgba(139, 92, 246, 0.2);
-}
-
-.vortex:hover {
-  box-shadow:
-    0 6px 20px rgba(6, 182, 212, 0.5),
-    0 0 40px rgba(139, 92, 246, 0.3);
 }
