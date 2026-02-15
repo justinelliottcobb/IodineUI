@@ -151,3 +151,42 @@ export const LowIntensity: Story = {
     intensity: 0.4,
   },
 }
+
+export const VfxEffects: Story = {
+  name: 'VFX Effects',
+  render: () => (
+    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <Loader size="lg" vfx="aurora" />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>aurora</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <Loader size="lg" vfx="nebula" />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>nebula</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <Loader size="lg" vfx="electric" />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>electric</div>
+      </div>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const CustomPalette: Story = {
+  name: 'Custom Palette',
+  args: {
+    size: 'lg',
+    vfx: { effect: 'spinner', palette: ['#ef4444', '#f59e0b'] },
+  },
+}
+
+export const VfxNone: Story = {
+  name: 'VFX Disabled',
+  args: {
+    size: 'lg',
+    vfx: 'none',
+  },
+}

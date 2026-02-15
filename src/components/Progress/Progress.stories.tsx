@@ -181,3 +181,48 @@ export const FullProgress: Story = {
     label: true,
   },
 }
+
+export const VfxEffects: Story = {
+  name: 'VFX Effects',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px' }}>
+      <div>
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginBottom: '0.5rem' }}>aurora</div>
+        <Progress value={70} size="md" vfx="aurora" />
+      </div>
+      <div>
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginBottom: '0.5rem' }}>nebula</div>
+        <Progress value={70} size="md" vfx="nebula" />
+      </div>
+      <div>
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginBottom: '0.5rem' }}>electric</div>
+        <Progress value={70} size="md" vfx="electric" />
+      </div>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const CustomPalette: Story = {
+  name: 'Custom Palette',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '300px' }}>
+      <Progress value={65} size="lg" label vfx={{ effect: 'progress-linear', palette: ['#10b981', '#06b6d4'] }} />
+      <Progress value={65} size="lg" label vfx={{ effect: 'progress-linear', palette: ['#ef4444', '#f59e0b'] }} />
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const VfxNone: Story = {
+  name: 'VFX Disabled',
+  args: {
+    value: 50,
+    size: 'md',
+    vfx: 'none',
+  },
+}

@@ -170,3 +170,55 @@ export const FullProgress: Story = {
     label: true,
   },
 }
+
+export const VfxEffects: Story = {
+  name: 'VFX Effects',
+  render: () => (
+    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <RingProgress value={70} size="lg" vfx="aurora" label />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>aurora</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <RingProgress value={70} size="lg" vfx="nebula" label />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>nebula</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <RingProgress value={70} size="lg" vfx="electric" label />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>electric</div>
+      </div>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const CustomPalette: Story = {
+  name: 'Custom Palette',
+  render: () => (
+    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <RingProgress value={75} size="lg" label vfx={{ effect: 'progress-ring', palette: ['#10b981', '#06b6d4'] }} />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>green/cyan</div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <RingProgress value={75} size="lg" label vfx={{ effect: 'progress-ring', palette: ['#ef4444', '#f59e0b'] }} />
+        <div style={{ color: '#a1a1aa', fontSize: '0.75rem', marginTop: '0.5rem' }}>red/orange</div>
+      </div>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const VfxNone: Story = {
+  name: 'VFX Disabled',
+  args: {
+    value: 50,
+    size: 'lg',
+    vfx: 'none',
+    label: true,
+  },
+}

@@ -2,7 +2,7 @@
 
 > A shader-powered React component library with Mantine-level functionality and WebGL-driven visual effects.
 
-**Current progress: 6 / ~120 core components (5%) | 0 / ~73 hooks | 0 / 10 extension packages**
+**Current progress: 6 / ~120 core components (5%) | 2 / ~73 hooks | 0 / 10 extension packages**
 
 ---
 
@@ -31,27 +31,37 @@ IodineUI aims to achieve component-functionality parity with [Mantine UI](https:
 | Shader registry | Auto-discovery via `import.meta.glob` | 505ce2e |
 | 7 shader effects | plasma, fire, vortex, octograms, spinner, progress-linear, progress-ring | various |
 | Storybook 10 | Component documentation and development | ffb0701 |
+| **Phase 0: VFX Engine** | Shader parameterization, presets, `vfx` prop, rotor library | ee50fee |
+| VFX type system | `VfxConfig`, `VfxProp`, `ResolvedVfxConfig`, `resolveVfxConfig()` | ee50fee |
+| Color bridge | `hexToVec3()`, `vec3ToRgba()` — theme colors to GLSL vec3 uniforms | ee50fee |
+| Preset system | `createShaderPreset()`, `registerPresets()`, `getPreset()` | ee50fee |
+| Shader parameterization | `uColor1/2/3`, `uSpeed`, `uScale` uniforms on all 10 effects | ee50fee |
+| 3 new effects | aurora, nebula, electric | ee50fee |
+| GLSL rotor library | Cl(3,0) rotors — `rotor_apply`, `rotor_slerp`, `rotor_multiply`, etc. | ee50fee |
+| Rotor tilt system | `uTilt` uniform on all shaders, mouse-driven or static perspective tilt | ee50fee |
+| `useSmoothValue` hook | cliffy-tsukoshi `GeometricState.blend()` for smooth scalar interpolation | ee50fee |
+| `vfx` prop on all components | ShaderButton, Loader, Progress, RingProgress — backward-compatible | ee50fee |
 
 ---
 
 ## Phase 0: VFX Engine & Customization Tooling
 
-**Status:** Not started
+**Status:** Core complete ✅ | Remaining: effect targets, intensity presets, Storybook playground
 **Priority:** Critical path — must ship before mass component work
 
 _The differentiator. Build the tooling that makes shader effects accessible to non-shader developers._
 
-### 0.1 Shader Parameterization System
+### 0.1 Shader Parameterization System ✅
 
-The current API exposes shader effects as raw `variant` strings with a few numeric uniforms. This phase replaces that with a declarative, theme-aware configuration system.
+- [x] Define `VfxConfig` / `VfxProp` / `ResolvedVfxConfig` types
+- [x] Implement `createShaderPreset()` — factory for user-defined presets
+- [x] Add per-component `vfx` prop — declarative VFX configuration
+- [x] Implement color extraction — `hexToVec3()` bridges theme palette to GLSL uniforms
+- [x] All 10 shaders parameterized with `uColor1/2/3`, `uSpeed`, `uScale`
+- [x] 3 new effects: aurora, nebula, electric
+- [ ] Theme-level VFX defaults via `IodineProvider`
 
-- [ ] Define `ShaderPreset` type — named, parameterized shader configs (colors, speed, intensity, pattern scale)
-- [ ] Implement `createShaderPreset()` — factory for user-defined presets derived from base effects
-- [ ] Add per-component `vfx` prop — declarative VFX configuration object
-- [ ] Add theme-level VFX defaults — `IodineProvider` accepts `vfx` config applied globally
-- [ ] Implement color extraction — shaders auto-derive colors from theme palette (no hardcoded RGBA in GLSL)
-
-**Target developer experience:**
+**Developer experience (working today):**
 
 ```tsx
 // Per-component configuration
@@ -59,103 +69,58 @@ The current API exposes shader effects as raw `variant` strings with a few numer
   Click me
 </ShaderButton>
 
-// Shader on a non-button component, targeting just the border
-<Card vfx={{ effect: 'subtle-gradient', intensity: 0.3, target: 'border' }}>
-  Content here
-</Card>
-
 // Custom preset
-const myPreset = createShaderPreset('plasma', {
+const myPreset = createShaderPreset('neon-fire', {
+  effect: 'fire',
   speed: 0.3,
   palette: ['#ff6b6b', '#ffd93d'],
-  glow: { color: '#ff6b6b', intensity: 0.6 },
 })
-
 <ShaderButton vfx={myPreset}>Custom look</ShaderButton>
+
+// Rotor-based perspective tilt (mouse-driven)
+<ShaderButton vfx={{ effect: 'plasma', tilt: true }}>Tilts with mouse</ShaderButton>
+
+// Static tilt
+<ShaderButton vfx={{ effect: 'octograms', tilt: { x: 0.2, y: 0.1 } }}>Tilted</ShaderButton>
 
 // Opt-out entirely
 <ShaderButton vfx="none">Plain button</ShaderButton>
 ```
 
-### 0.2 Shader Effect Targets
-
-Different components benefit from shaders in different places. The effect target system controls where the shader canvas renders relative to the component.
+### 0.2 Shader Effect Targets (not started)
 
 - [ ] `background` — full canvas behind content (current default behavior)
-- [ ] `border` — shader renders only along element edges (mask or clip to border area)
-- [ ] `glow` — shader drives the drop-shadow/box-shadow effect dynamically
-- [ ] `underline` / `indicator` — thin shader strip for text links and navigation active states
-- [ ] `fill` — for progress-style components where the shader fills proportionally
+- [ ] `border` — shader renders only along element edges
+- [ ] `glow` — shader drives drop-shadow/box-shadow dynamically
+- [ ] `underline` / `indicator` — thin shader strip for text links and navigation
+- [ ] `fill` — for progress-style components
 
-### 0.3 Preset Library
+### 0.3 Preset Library (partially complete)
 
-- [ ] Ship 10+ named presets: `plasma`, `fire`, `vortex`, `octograms`, `aurora`, `nebula`, `electric`, `holographic`, `crystalline`, `void`
-- [ ] Categorize presets by intensity level:
-  - `subtle` — borders and glows only, minimal GPU cost
-  - `moderate` — backgrounds at low opacity, gentle animation
-  - `vivid` — full-intensity effect (current behavior)
-- [ ] `vfx="none"` to opt-out of all shader effects per component
+- [x] 10 named presets: plasma, fire, vortex, octograms, spinner, aurora, nebula, electric, progress-linear, progress-ring
+- [ ] Categorize presets by intensity level (subtle, moderate, vivid)
+- [x] `vfx="none"` to opt-out of all shader effects per component
 - [ ] Document GPU performance characteristics per preset
 
-### 0.4 VFX Storybook Playground
+### 0.4 VFX Storybook Playground (not started)
 
-An interactive tool for exploring and configuring shader effects without writing code.
+- [ ] Interactive Storybook controls for all shader parameters
+- [ ] Live GLSL preview panel
+- [ ] "Export preset" — copy config as code
+- [ ] Side-by-side comparison view
+- [ ] Performance metrics overlay
 
-- [ ] Interactive Storybook controls for all shader parameters (speed, colors, scale, intensity, target)
-- [ ] Live GLSL preview panel showing the generated shader code
-- [ ] "Export preset" — copy the `vfx` config object or `createShaderPreset()` call as code
-- [ ] Side-by-side comparison view: same component with different presets
-- [ ] Performance metrics overlay (FPS, GPU memory)
+### 0.5 cliffy-tsukoshi Integration (partially complete)
 
-### 0.5 cliffy-tsukoshi Integration — Animation Layer
-
-[cliffy-tsukoshi](/home/elliotthall/working/rust/cliffy/cliffy-tsukoshi) is a zero-dependency TypeScript library providing geometric algebra-based state management with smooth interpolation. It gives IodineUI physics-aware, frame-rate-independent animations.
-
-**Core capabilities we'll use:**
-- `GeometricState.blend()` — smooth LERP for positions, scales, opacities
-- `Rotor.slerp()` — gimbal-lock-free rotation interpolation
-- `Transform.interpolate()` — combined rotation + translation
-- `ReactiveState` — subscription-based state with automatic notifications
-
-**Integration tasks:**
-- [ ] Add `cliffy-tsukoshi` as a dependency
-- [ ] `useGeometricState()` hook — wraps ReactiveState for React lifecycle (subscribe on mount, cleanup on unmount)
-- [ ] `useSmoothValue(target, blendFactor)` — smooth scalar interpolation for progress values, opacity, scale
-- [ ] `useSmoothPosition([x, y], options)` — smooth 2D position for drag, pan, parallax
+- [x] Add `cliffy-tsukoshi` as dependency (npm link)
+- [x] `useSmoothValue()` hook — smooth scalar interpolation via `GeometricState.blend()`
+- [x] Progress/RingProgress use `useSmoothValue` for animated value changes
+- [x] GLSL rotor library — GA rotors on the GPU side (complements JS-side cliffy-tsukoshi)
+- [ ] `useGeometricState()` hook — wraps ReactiveState for React lifecycle
+- [ ] `useSmoothPosition([x, y], options)` — smooth 2D position
 - [ ] `useSmoothRotation(angle, options)` — smooth rotation via SLERP
-- [ ] `useSmoothTransform({ position, rotation }, options)` — combined transform interpolation
-- [ ] Smooth uniform pipe — shader uniforms interpolated via `.blend()` instead of snapping on value change
-- [ ] Physics-based VFX — spring/damping behaviors for hover intensity, click flash, mount/unmount
-- [ ] `<Motion>` wrapper component — applies geometric interpolation to children's CSS transforms
-
-**Integration point map:**
-
-| IodineUI Feature | cliffy-tsukoshi Capability | Benefit |
-|-----------------|---------------------------|---------|
-| Shader uniform updates | `GeometricState.blend()` | Smooth value transitions instead of snapping |
-| Progress / RingProgress | Scalar `ReactiveState` | Animated value changes with damping |
-| Drag interactions | `Transform` + `ReactiveState` | Smooth position tracking with momentum |
-| 3D card hover effects | `Rotor.slerp()` | Gimbal-lock-free tilt/rotation |
-| Page transitions | `Transform.interpolate()` | Combined rotation + translation animations |
-| Hover state intensity | `useSmoothValue()` | Frame-rate independent blending |
-| Particle effects | `GeometricState` arrays | Position + velocity state for GPU particles |
-| Reduced motion | Bypass `.blend()`, snap to target | Respects `prefers-reduced-motion` |
-
-**Planned hook API:**
-
-```ts
-// Smooth scalar — progress bars, opacity, scale
-const smoothProgress = useSmoothValue(targetValue, { blend: 0.1, threshold: 0.001 })
-
-// Smooth 2D position — drag, parallax, tooltips
-const smoothPos = useSmoothPosition([x, y], { blend: 0.15, damping: 0.95 })
-
-// Smooth rotation — card tilt, dial controls
-const smoothRotation = useSmoothRotation(angleRad, { slerp: 0.1 })
-
-// Combined transform — complex animations
-const smoothTransform = useSmoothTransform({ position, rotation }, { blend: 0.12 })
-```
+- [ ] `useSmoothTransform({ position, rotation }, options)` — combined transform
+- [ ] `<Motion>` wrapper component
 
 ---
 
@@ -494,7 +459,7 @@ _Each extension is a separate npm package. Build after the core component librar
 
 | Priority | Items | Rationale |
 |----------|-------|-----------|
-| **Critical** | Phase 0: VFX engine, presets, `vfx` prop | Core differentiator — everything else depends on this |
+| **Critical** | ~~Phase 0: VFX engine, presets, `vfx` prop~~ ✅ | Core differentiator — everything else depends on this |
 | **Critical** | Switch, Slider, Skeleton, Tabs | Peak shader appeal — animated state transitions |
 | **High** | cliffy-tsukoshi hooks (`useSmoothValue`, etc.) | Foundation for the premium animation feel |
 | **High** | Card, Badge, ActionIcon, Modal, Tooltip | Most commonly used components in real apps |
@@ -615,7 +580,7 @@ _Each extension is a separate npm package. Build after the core component librar
 
 | Package | Scope | Status |
 |---------|-------|--------|
-| `@iodine-ui/hooks` | ~73 utility hooks | 🔲 |
+| `@iodine-ui/hooks` | ~73 utility hooks (2 shipped: `useShaderCanvas`, `useSmoothValue`) | 🚧 |
 | `@iodine-ui/dates` | 15 date/time components | 🔲 |
 | `@iodine-ui/charts` | 13 chart components | 🔲 |
 | `@iodine-ui/notifications` | Notification system | 🔲 |

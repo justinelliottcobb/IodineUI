@@ -71,6 +71,27 @@ export const Octograms: Story = {
   },
 }
 
+export const Aurora: Story = {
+  args: {
+    vfx: 'aurora',
+    children: 'Aurora',
+  },
+}
+
+export const Nebula: Story = {
+  args: {
+    vfx: 'nebula',
+    children: 'Nebula',
+  },
+}
+
+export const Electric: Story = {
+  args: {
+    vfx: 'electric',
+    children: 'Electric',
+  },
+}
+
 export const LowIntensity: Story = {
   args: {
     variant: 'plasma',
@@ -94,6 +115,9 @@ export const AllVariants: Story = {
       <FireButton>Fire</FireButton>
       <VortexButton>Vortex</VortexButton>
       <OctogramButton>Octograms</OctogramButton>
+      <ShaderButton vfx="aurora">Aurora</ShaderButton>
+      <ShaderButton vfx="nebula">Nebula</ShaderButton>
+      <ShaderButton vfx="electric">Electric</ShaderButton>
     </div>
   ),
   parameters: {
@@ -112,5 +136,88 @@ export const IntensityComparison: Story = {
   ),
   parameters: {
     controls: { disable: true },
+  },
+}
+
+export const CustomPalette: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <ShaderButton vfx={{ effect: 'plasma', palette: ['#ef4444', '#f59e0b'] }}>
+        Red/Orange
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'plasma', palette: ['#10b981', '#06b6d4'] }}>
+        Green/Cyan
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'fire', palette: ['#3b82f6', '#8b5cf6'] }}>
+        Blue Fire
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'electric', palette: ['#f59e0b', '#ef4444'] }}>
+        Orange Lightning
+      </ShaderButton>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const SpeedVariations: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <ShaderButton vfx={{ effect: 'plasma', speed: 0.3 }}>Slow</ShaderButton>
+      <ShaderButton vfx={{ effect: 'plasma', speed: 1.0 }}>Normal</ShaderButton>
+      <ShaderButton vfx={{ effect: 'plasma', speed: 3.0 }}>Fast</ShaderButton>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const MouseTilt: Story = {
+  name: 'Mouse-Driven Tilt',
+  render: () => (
+    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <ShaderButton vfx={{ effect: 'plasma', tilt: true }}>
+        Plasma Tilt
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'nebula', tilt: true }}>
+        Nebula Tilt
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'electric', tilt: true }}>
+        Electric Tilt
+      </ShaderButton>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const StaticTilt: Story = {
+  name: 'Static Tilt Angles',
+  render: () => (
+    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <ShaderButton vfx={{ effect: 'aurora', tilt: { x: 0.2, y: 0.0 } }}>
+        X Tilt
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'aurora', tilt: { x: 0.0, y: 0.2 } }}>
+        Y Tilt
+      </ShaderButton>
+      <ShaderButton vfx={{ effect: 'aurora', tilt: { x: 0.15, y: 0.15 } }}>
+        XY Tilt
+      </ShaderButton>
+    </div>
+  ),
+  parameters: {
+    controls: { disable: true },
+  },
+}
+
+export const VfxNone: Story = {
+  name: 'VFX Disabled',
+  args: {
+    vfx: 'none',
+    children: 'No Shader',
   },
 }
