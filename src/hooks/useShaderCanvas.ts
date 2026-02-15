@@ -1,6 +1,7 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { Renderer, Program, Mesh, Triangle } from 'ogl'
 import { vertexShader, shaderRegistry, type ShaderVariant, type ShaderEffect } from '../shaders'
+import type { ResolvedVfxConfig } from '../vfx/types'
 
 export interface UseShaderCanvasOptions {
   /** Shader effect variant name */
@@ -17,6 +18,8 @@ export interface UseShaderCanvasOptions {
   speed?: number
   /** Device pixel ratio cap (default: 2) */
   maxDpr?: number
+  /** Resolved VFX configuration (overrides variant/intensity/speed/mouseTracking when present) */
+  vfxConfig?: ResolvedVfxConfig | null
 }
 
 export interface UseShaderCanvasReturn {
@@ -40,6 +43,8 @@ export interface UseShaderCanvasReturn {
   isAnimating: boolean
   /** The resolved shader effect */
   effect: ShaderEffect | undefined
+  /** Glow CSS color from VFX config or effect default, or false if disabled */
+  glowColor: string | false
 }
 
 export function useShaderCanvas({
@@ -50,6 +55,7 @@ export function useShaderCanvas({
   customUniforms,
   speed = 1.0,
   maxDpr = 2,
+  vfxConfig,
 }: UseShaderCanvasOptions): UseShaderCanvasReturn {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<Renderer | null>(null)
@@ -63,9 +69,58 @@ export function useShaderCanvas({
 
   const [isAnimating, setIsAnimating] = useState(autoStart)
 
-  const effect = shaderRegistry[variant]
+  // Derive effective values from vfxConfig or props
+  const effectiveVariant = (vfxConfig?.effect ?? variant) as ShaderVariant
+  const effectiveIntensity = vfxConfig?.intensity ?? intensity
+  const effectiveSpeed = vfxConfig?.speed ?? speed
+  const effectiveMouseTracking = vfxConfig?.mouseTracking ?? enableMouseTracking
 
-  // Animation loop
+  const effect = shaderRegistry[effectiveVariant]
+
+  // Derive tilt settings
+  const tiltFromMouse = vfxConfig?.tiltFromMouse ?? false
+
+  // Build VFX uniforms from resolved config
+  const vfxUniforms = useMemo(() => {
+    if (!vfxConfig) {
+      // Default VFX uniforms when no config present
+      return {
+        uSpeed: { value: effectiveSpeed },
+        uScale: { value: 1.0 },
+        uColor1: { value: [0.545, 0.361, 0.965] }, // #8b5cf6
+        uColor2: { value: [0.024, 0.714, 0.831] }, // #06b6d4
+        uColor3: { value: [0.545, 0.361, 0.965] }, // #8b5cf6
+        uTilt: { value: [0, 0] },
+      }
+    }
+
+    const palette = vfxConfig.palette
+    return {
+      uSpeed: { value: vfxConfig.speed },
+      uScale: { value: vfxConfig.scale },
+      uColor1: { value: palette[0] ? [...palette[0]] : [0.545, 0.361, 0.965] },
+      uColor2: { value: palette[1] ? [...palette[1]] : [0.024, 0.714, 0.831] },
+      uColor3: { value: palette[2] ? [...palette[2]] : [0.545, 0.361, 0.965] },
+      uTilt: { value: vfxConfig.tiltFromMouse ? [0, 0] : [...vfxConfig.tilt] },
+      ...vfxConfig.customUniforms,
+    }
+  }, [vfxConfig, effectiveSpeed])
+
+  // Stable key for vfxConfig to use as dependency
+  const vfxConfigKey = useMemo(
+    () => (vfxConfig ? JSON.stringify(vfxConfig) : ''),
+    [vfxConfig],
+  )
+
+  // Glow color: vfxConfig takes priority, then effect default
+  const glowColor = useMemo((): string | false => {
+    if (vfxConfig) {
+      return vfxConfig.glow
+    }
+    return effect?.glow ?? false
+  }, [vfxConfig, effect])
+
+  // Animation loop — uTime advances at wall-clock rate, shaders use uSpeed internally
   const animate = useCallback(() => {
     if (isPausedRef.current) return
 
@@ -75,18 +130,26 @@ export function useShaderCanvas({
 
     if (!program || !renderer || !mesh) return
 
-    const elapsed = ((performance.now() - startTimeRef.current) / 1000) * speed
+    const elapsed = (performance.now() - startTimeRef.current) / 1000
     program.uniforms.uTime.value = elapsed
 
-    if (enableMouseTracking) {
+    if (effectiveMouseTracking) {
       program.uniforms.uMouse.value = [mouseRef.current.x, mouseRef.current.y]
     }
 
-    program.uniforms.uIntensity.value = intensity
+    program.uniforms.uIntensity.value = effectiveIntensity
+
+    // Update tilt from mouse position when mouse-driven tilt is active
+    if (tiltFromMouse && program.uniforms.uTilt) {
+      program.uniforms.uTilt.value = [
+        (mouseRef.current.x - 0.5) * 0.3,
+        (mouseRef.current.y - 0.5) * 0.3,
+      ]
+    }
 
     renderer.render({ scene: mesh })
     animationRef.current = requestAnimationFrame(animate)
-  }, [intensity, enableMouseTracking, speed])
+  }, [effectiveIntensity, effectiveMouseTracking, tiltFromMouse])
 
   // Setup WebGL
   useEffect(() => {
@@ -107,12 +170,13 @@ export function useShaderCanvas({
 
     const geometry = new Triangle(gl)
 
-    // Merge default uniforms with custom uniforms
+    // Merge default uniforms with VFX uniforms and custom uniforms
     const uniforms: Record<string, { value: number | number[] }> = {
       uTime: { value: 0 },
-      uIntensity: { value: intensity },
+      uIntensity: { value: effectiveIntensity },
       uResolution: { value: [canvas.offsetWidth || 100, canvas.offsetHeight || 100] },
       uMouse: { value: [0.5, 0.5] },
+      ...vfxUniforms,
       ...customUniforms,
     }
 
@@ -155,14 +219,14 @@ export function useShaderCanvas({
       programRef.current = null
       meshRef.current = null
     }
-  }, [variant, effect, maxDpr, autoStart, animate, customUniforms, intensity])
+  }, [effectiveVariant, effect, maxDpr, autoStart, animate, vfxConfigKey, customUniforms, effectiveIntensity])
 
   // Update intensity when it changes
   useEffect(() => {
     if (programRef.current) {
-      programRef.current.uniforms.uIntensity.value = intensity
+      programRef.current.uniforms.uIntensity.value = effectiveIntensity
     }
-  }, [intensity])
+  }, [effectiveIntensity])
 
   // Control functions
   const start = useCallback(() => {
@@ -201,18 +265,18 @@ export function useShaderCanvas({
 
   // Mouse handlers
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!enableMouseTracking) return
+    if (!effectiveMouseTracking) return
     const rect = e.currentTarget.getBoundingClientRect()
     mouseRef.current = {
       x: (e.clientX - rect.left) / rect.width,
       y: 1.0 - (e.clientY - rect.top) / rect.height,
     }
-  }, [enableMouseTracking])
+  }, [effectiveMouseTracking])
 
   const handleMouseLeave = useCallback(() => {
-    if (!enableMouseTracking) return
+    if (!effectiveMouseTracking) return
     mouseRef.current = { x: 0.5, y: 0.5 }
-  }, [enableMouseTracking])
+  }, [effectiveMouseTracking])
 
   return {
     canvasRef,
@@ -225,5 +289,6 @@ export function useShaderCanvas({
     handleMouseLeave,
     isAnimating,
     effect,
+    glowColor,
   }
 }

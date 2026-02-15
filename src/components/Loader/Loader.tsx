@@ -1,7 +1,9 @@
-import { type HTMLAttributes } from 'react'
+import { useMemo, type HTMLAttributes } from 'react'
 import { useShaderCanvas } from '../../hooks'
 import { type ShaderVariant } from '../../shaders'
-import { type ThemeSize, type ThemeColor, sizeMap, getThemeGlow } from '../../theme'
+import { type ThemeSize, type ThemeColor, sizeMap, getThemeGlow, useIodineTheme } from '../../theme'
+import { resolveVfxConfig } from '../../vfx'
+import type { VfxProp } from '../../vfx/types'
 import styles from './Loader.module.css'
 
 export interface LoaderProps extends HTMLAttributes<HTMLDivElement> {
@@ -13,6 +15,8 @@ export interface LoaderProps extends HTMLAttributes<HTMLDivElement> {
   color?: ThemeColor
   /** Effect intensity 0-1 */
   intensity?: number
+  /** VFX configuration — overrides variant/intensity when provided */
+  vfx?: VfxProp
 }
 
 function getSize(size: ThemeSize | number): number {
@@ -25,26 +29,35 @@ export function Loader({
   size = 'md',
   color = 'primary',
   intensity = 1.0,
+  vfx,
   className,
   style,
   'aria-label': ariaLabel = 'Loading',
   ...props
 }: LoaderProps) {
-  const { canvasRef, effect } = useShaderCanvas({
+  const { theme } = useIodineTheme()
+
+  const vfxConfig = useMemo(
+    () => (vfx !== undefined ? resolveVfxConfig(vfx, theme) : null),
+    [vfx, theme],
+  )
+
+  const { canvasRef, glowColor } = useShaderCanvas({
     variant,
     intensity,
     enableMouseTracking: false,
+    vfxConfig,
   })
 
   const pixelSize = getSize(size)
-  const glowColor = getThemeGlow(color)
+  const effectGlow = glowColor || getThemeGlow(color)
 
   const loaderStyle: React.CSSProperties = {
     width: pixelSize,
     height: pixelSize,
-    ...(effect?.glow || glowColor
+    ...(effectGlow
       ? {
-          filter: `drop-shadow(0 0 ${Math.max(4, pixelSize / 8)}px ${effect?.glow || glowColor})`,
+          filter: `drop-shadow(0 0 ${Math.max(4, pixelSize / 8)}px ${effectGlow})`,
         }
       : {}),
     ...style,

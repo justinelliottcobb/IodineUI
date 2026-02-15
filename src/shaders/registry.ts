@@ -2,6 +2,12 @@ export interface ShaderEffect {
   name: string
   fragment: string
   glow?: string
+  /** Default parameter values for this effect */
+  defaults?: {
+    speed?: number
+    scale?: number
+    palette?: string[]
+  }
 }
 
 // Common vertex shader for all effects

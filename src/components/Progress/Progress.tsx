@@ -1,6 +1,8 @@
-import { useEffect, type HTMLAttributes } from 'react'
-import { useShaderCanvas } from '../../hooks'
-import { type ThemeSize, type ThemeColor, getThemeGlow } from '../../theme'
+import { useEffect, useMemo, type HTMLAttributes } from 'react'
+import { useShaderCanvas, useSmoothValue } from '../../hooks'
+import { type ThemeSize, type ThemeColor, getThemeGlow, useIodineTheme } from '../../theme'
+import { resolveVfxConfig } from '../../vfx'
+import type { VfxProp } from '../../vfx/types'
 import styles from './Progress.module.css'
 
 export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
@@ -18,6 +20,8 @@ export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
   label?: boolean | string
   /** Border radius */
   radius?: ThemeSize
+  /** VFX configuration — overrides variant/intensity when provided */
+  vfx?: VfxProp
 }
 
 const sizeHeightMap: Record<ThemeSize, number> = {
@@ -49,42 +53,61 @@ export function Progress({
   intensity = 1.0,
   label,
   radius = 'md',
+  vfx,
   className,
   style,
   'aria-label': ariaLabel = 'Progress',
   ...props
 }: ProgressProps) {
+  const { theme } = useIodineTheme()
   const normalizedValue = Math.max(0, Math.min(100, value)) / 100
+
+  // Smooth progress animation
+  const smooth = useSmoothValue({ initial: normalizedValue, blendFactor: 0.1 })
+  const progressValue = animated ? smooth.value : normalizedValue
+
+  // Update smooth target when value changes
+  useEffect(() => {
+    if (animated) {
+      smooth.setTarget(normalizedValue)
+    }
+  }, [normalizedValue, animated, smooth.setTarget])
+
+  const vfxConfig = useMemo(
+    () => (vfx !== undefined ? resolveVfxConfig(vfx, theme) : null),
+    [vfx, theme],
+  )
 
   const {
     canvasRef,
     setUniform,
-    effect,
+    glowColor,
   } = useShaderCanvas({
     variant: 'progress-linear',
     intensity: animated ? intensity : intensity * 0.7,
     enableMouseTracking: false,
     customUniforms: {
-      uProgress: { value: normalizedValue },
+      uProgress: { value: progressValue },
     },
+    vfxConfig,
   })
 
   // Update progress uniform when value changes
   useEffect(() => {
-    setUniform('uProgress', normalizedValue)
-  }, [normalizedValue, setUniform])
+    setUniform('uProgress', progressValue)
+  }, [progressValue, setUniform])
 
   const height = getHeight(size)
-  const glowColor = getThemeGlow(color)
+  const effectGlow = glowColor || getThemeGlow(color)
 
   const progressStyle: React.CSSProperties = {
     height,
     borderRadius: typeof radius === 'string' && radius in radiusMap
       ? radiusMap[radius as ThemeSize]
       : radius,
-    ...(effect?.glow || glowColor
+    ...(effectGlow
       ? {
-          boxShadow: `0 0 ${Math.max(4, height / 2)}px ${effect?.glow || glowColor}`,
+          boxShadow: `0 0 ${Math.max(4, height / 2)}px ${effectGlow}`,
         }
       : {}),
     ...style,
