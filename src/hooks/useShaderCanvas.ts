@@ -3,6 +3,14 @@ import { Renderer, Program, Mesh, Triangle } from 'ogl'
 import { vertexShader, shaderRegistry, type ShaderVariant, type ShaderEffect } from '../shaders'
 import type { ResolvedVfxConfig } from '../vfx/types'
 
+/**
+ * Track active WebGL context count globally so we can avoid exceeding
+ * the browser limit (~16). Contexts are created lazily when a canvas
+ * becomes visible and released when it scrolls out of view.
+ */
+let activeContextCount = 0
+const MAX_CONTEXTS = 14 // leave headroom below browser cap
+
 export interface UseShaderCanvasOptions {
   /** Shader effect variant name */
   variant: ShaderVariant
@@ -66,6 +74,7 @@ export function useShaderCanvas({
   const startTimeRef = useRef<number>(0)
   const pausedTimeRef = useRef<number>(0)
   const isPausedRef = useRef(!autoStart)
+  const isVisibleRef = useRef(false)
 
   const [isAnimating, setIsAnimating] = useState(autoStart)
 
@@ -106,12 +115,6 @@ export function useShaderCanvas({
     }
   }, [vfxConfig, effectiveSpeed])
 
-  // Stable key for vfxConfig to use as dependency
-  const vfxConfigKey = useMemo(
-    () => (vfxConfig ? JSON.stringify(vfxConfig) : ''),
-    [vfxConfig],
-  )
-
   // Glow color: vfxConfig takes priority, then effect default
   const glowColor = useMemo((): string | false => {
     if (vfxConfig) {
@@ -128,7 +131,10 @@ export function useShaderCanvas({
     const renderer = rendererRef.current
     const mesh = meshRef.current
 
-    if (!program || !renderer || !mesh) return
+    if (!program || !renderer || !mesh || !isVisibleRef.current) return
+
+    // Guard against lost context
+    if (renderer.gl.isContextLost()) return
 
     const elapsed = (performance.now() - startTimeRef.current) / 1000
     program.uniforms.uTime.value = elapsed
@@ -151,10 +157,13 @@ export function useShaderCanvas({
     animationRef.current = requestAnimationFrame(animate)
   }, [effectiveIntensity, effectiveMouseTracking, tiltFromMouse])
 
-  // Setup WebGL
-  useEffect(() => {
+  // Initialise WebGL context — called when canvas becomes visible
+  const initGL = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !effect) return
+    // Already initialised or at the context cap
+    if (rendererRef.current) return
+    if (activeContextCount >= MAX_CONTEXTS) return
 
     const renderer = new Renderer({
       canvas,
@@ -164,6 +173,7 @@ export function useShaderCanvas({
       alpha: true,
     })
     rendererRef.current = renderer
+    activeContextCount++
 
     const gl = renderer.gl
     gl.clearColor(0, 0, 0, 1)
@@ -190,8 +200,37 @@ export function useShaderCanvas({
     const mesh = new Mesh(gl, { geometry, program })
     meshRef.current = mesh
 
-    // Handle resize
+    // Start animation
+    startTimeRef.current = performance.now()
+    isPausedRef.current = !autoStart
+    setIsAnimating(autoStart)
+
+    if (autoStart) {
+      animationRef.current = requestAnimationFrame(animate)
+    }
+  }, [effect, maxDpr, autoStart, animate, vfxUniforms, customUniforms, effectiveIntensity])
+
+  // Tear down WebGL context — called when canvas scrolls out of view
+  const destroyGL = useCallback(() => {
+    cancelAnimationFrame(animationRef.current)
+    const renderer = rendererRef.current
+    if (renderer) {
+      renderer.gl.getExtension('WEBGL_lose_context')?.loseContext()
+      activeContextCount = Math.max(0, activeContextCount - 1)
+    }
+    rendererRef.current = null
+    programRef.current = null
+    meshRef.current = null
+  }, [])
+
+  // Observe visibility and manage context lifecycle
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !effect) return
+
     const handleResize = () => {
+      const renderer = rendererRef.current
+      const program = programRef.current
       if (!canvas || !renderer || !program) return
       const width = canvas.offsetWidth || 100
       const height = canvas.offsetHeight || 100
@@ -202,24 +241,28 @@ export function useShaderCanvas({
     const resizeObserver = new ResizeObserver(handleResize)
     resizeObserver.observe(canvas)
 
-    // Start animation
-    startTimeRef.current = performance.now()
-    isPausedRef.current = !autoStart
-    setIsAnimating(autoStart)
-
-    if (autoStart) {
-      animationRef.current = requestAnimationFrame(animate)
-    }
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && !isVisibleRef.current) {
+            isVisibleRef.current = true
+            initGL()
+          } else if (!entry.isIntersecting && isVisibleRef.current) {
+            isVisibleRef.current = false
+            destroyGL()
+          }
+        }
+      },
+      { threshold: 0 },
+    )
+    intersectionObserver.observe(canvas)
 
     return () => {
-      cancelAnimationFrame(animationRef.current)
+      intersectionObserver.disconnect()
       resizeObserver.disconnect()
-      gl.getExtension('WEBGL_lose_context')?.loseContext()
-      rendererRef.current = null
-      programRef.current = null
-      meshRef.current = null
+      destroyGL()
     }
-  }, [effectiveVariant, effect, maxDpr, autoStart, animate, vfxConfigKey, customUniforms, effectiveIntensity])
+  }, [effectiveVariant, effect, initGL, destroyGL])
 
   // Update intensity when it changes
   useEffect(() => {
